@@ -19,12 +19,11 @@
     "typescript": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
-  },
-  "devDependencies": {
+    "lucide-react": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest"
   },
+  "devDependencies": {},
   "workspaces": [
     "server"
   ]
