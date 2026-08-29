@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp -R sql dist/sql",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
     "migrate:prod": "node dist/migrate.js"
