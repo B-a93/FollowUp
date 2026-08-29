@@ -13,7 +13,8 @@
     "dotenv": "latest",
     "express": "latest",
     "jsonwebtoken": "latest",
-    "pg": "latest"
+    "pg": "latest",
+    "nodemailer": "latest"
   },
   "devDependencies": {
     "@types/cors": "latest",
@@ -22,6 +23,7 @@
     "@types/node": "latest",
     "@types/pg": "latest",
     "tsx": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "@types/nodemailer": "latest"
   }
 }
