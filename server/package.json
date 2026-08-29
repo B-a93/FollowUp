@@ -16,16 +16,16 @@
     "express": "latest",
     "jsonwebtoken": "latest",
     "pg": "latest",
-    "nodemailer": "latest"
-  },
-  "devDependencies": {
+    "nodemailer": "latest",
     "@types/cors": "latest",
     "@types/express": "latest",
     "@types/jsonwebtoken": "latest",
     "@types/node": "latest",
     "@types/pg": "latest",
-    "tsx": "latest",
-    "typescript": "latest",
     "@types/nodemailer": "latest"
+  },
+  "devDependencies": {
+    "tsx": "latest",
+    "typescript": "latest"
   }
 }
