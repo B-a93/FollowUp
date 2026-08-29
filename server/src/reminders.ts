@@ -20,11 +20,12 @@ export async function processReminders(db: pg.Pool, sendMail: Mailer) {
   for (const u of users.rows) {
     if (!u.email_enabled) continue;
     const local = await db.query(
-      `select now() at time zone $1 as now_local, current_date as server_date`, [u.timezone]
+      `select to_char(now() at time zone $1,'YYYY-MM-DD') as local_date,
+              extract(hour from now() at time zone $1)::int as local_hour`,
+      [u.timezone]
     );
-    const localNow = new Date(local.rows[0].now_local);
-    const dateKey = localNow.toISOString().slice(0,10);
-    const hour = localNow.getHours();
+    const dateKey = String(local.rows[0].local_date);
+    const hour = Number(local.rows[0].local_hour);
 
     if (u.morning_digest && hour === Number(u.morning_hour)) {
       const q = await db.query(`select client_label,task,due_at from follow_ups where user_id=$1 and status='upcoming' and (due_at at time zone $2)::date <= (now() at time zone $2)::date order by due_at`,[u.id,u.timezone]);
