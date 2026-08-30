@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "postinstall": "npm run build",
     "dev": "vite",
     "dev:server": "npm --workspace server run dev",
     "build:client": "tsc -b && vite build",
