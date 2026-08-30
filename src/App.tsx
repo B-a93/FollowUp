@@ -484,6 +484,7 @@ function SnoozePrompt({
         <span className="eyebrow">SNOOZE</span>
         <h2>Remind me about {item.client_label}</h2>
         <div className="choiceGrid">
+          <button onClick={() => snooze(30)}>In 30 minutes</button>
           <button onClick={() => snooze(60)}>In 1 hour</button>
           <button onClick={() => snooze(1440)}>Tomorrow</button>
           <button onClick={() => snooze(4320)}>In 3 days</button>
@@ -588,6 +589,7 @@ function Section({
 function formatActivityDetail(activity: Activity) {
   if (activity.event_type !== "snoozed") return activity.detail;
   const minutes = Number(activity.detail);
+  if (minutes === 30) return "Snoozed for 30 minutes";
   if (minutes === 60) return "Snoozed for 1 hour";
   if (minutes === 1440) return "Snoozed for 1 day";
   if (minutes === 4320) return "Snoozed for 3 days";
