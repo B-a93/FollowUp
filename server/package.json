@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "npm install --prefix .. --ignore-scripts && npm --prefix .. run build",
     "dev": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json && cp -R sql dist/sql",
+    "build": "tsc -p tsconfig.json --noEmit && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist/index.js && esbuild src/migrate.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist/migrate.js && cp -R sql dist/sql",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
     "migrate:prod": "node dist/migrate.js"
@@ -26,6 +26,7 @@
     "@types/nodemailer": "latest"
   },
   "devDependencies": {
+    "esbuild": "latest",
     "tsx": "latest",
     "typescript": "latest"
   }
