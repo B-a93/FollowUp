@@ -10,7 +10,7 @@
     "build:client": "tsc -b && vite build",
     "build:server": "npm --workspace server run build",
     "build": "npm run build:client && npm run build:server",
-    "start": "node dist/index.js",
+    "start": "node server/dist/index.js",
     "migrate": "npm --workspace server run migrate:prod",
     "preview": "vite preview"
   },
@@ -28,5 +28,5 @@
   "workspaces": [
     "server"
   ],
-  "main": "dist/index.js"
+  "main": "server/dist/index.js"
 }
