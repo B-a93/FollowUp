@@ -1,3 +1,6 @@
 main:not(.auth)>section:first-of-type .sectionTitle h2{color:#ffbf69}
 main:not(.auth)>section:first-of-type .sectionTitle span{background:#4a2a13;color:#ffd39a}
 main:not(.auth)>section:first-of-type article,main:not(.auth)>section:first-of-type .empty{border-color:#7a4924;background:linear-gradient(135deg,#241b18,#0c192a 62%);box-shadow:inset 4px 0 #e28a3b}
+.snoozeNotice{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px}
+.snoozeNotice button{border:1px solid #4f8c67;background:#183d29;color:#d8f7e2;border-radius:10px;padding:8px 14px;font-weight:700}
+.choiceGrid button:disabled{cursor:wait;opacity:.55}
