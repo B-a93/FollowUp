@@ -157,6 +157,11 @@ function Dashboard({ logout }: { logout: () => void }) {
     ),
     [nextFor, setNextFor] = useState<F | null>(null),
     [snoozeFor, setSnoozeFor] = useState<F | null>(null),
+    [snoozeNotice, setSnoozeNotice] = useState<{
+      item: F;
+      originalDue: string;
+      newDue: string;
+    } | null>(null),
     [settings, setSettings] = useState(false);
   async function load() {
     try {
@@ -199,12 +204,28 @@ function Dashboard({ logout }: { logout: () => void }) {
     setNextFor(x);
   }
   async function snooze(id: number, minutes: number) {
-    await call("/api/followups/" + id + "/snooze", {
+    if (!snoozeFor) return;
+    const originalDue = snoozeFor.due_at;
+    const result = await call("/api/followups/" + id + "/snooze", {
       method: "POST",
       body: JSON.stringify({ minutes }),
     });
     await load();
+    setSnoozeNotice({
+      item: snoozeFor,
+      originalDue,
+      newDue: result.data.due_at,
+    });
     setSnoozeFor(null);
+  }
+  async function undoSnooze() {
+    if (!snoozeNotice) return;
+    await call("/api/followups/" + snoozeNotice.item.id, {
+      method: "PATCH",
+      body: JSON.stringify({ dueAt: snoozeNotice.originalDue }),
+    });
+    await load();
+    setSnoozeNotice(null);
   }
   async function showActivity(x: F) {
     const j = await call("/api/followups/" + x.id + "/activity");
@@ -242,6 +263,14 @@ function Dashboard({ logout }: { logout: () => void }) {
         Privacy: keep client notes generic. Do not enter confidential banking or
         account information.
       </aside>
+      {snoozeNotice && (
+        <div className="success snoozeNotice">
+          <span>
+            Snoozed until {new Date(snoozeNotice.newDue).toLocaleString()}.
+          </span>
+          <button onClick={undoSnooze}>Undo</button>
+        </div>
+      )}
       {err && <p className="error">{err}</p>}
       {loading ? (
         <div className="empty">Loading follow-ups…</div>
@@ -473,8 +502,18 @@ function SnoozePrompt({
 }: {
   item: F;
   close: () => void;
-  snooze: (minutes: number) => void;
+  snooze: (minutes: number) => Promise<void>;
 }) {
+  const [busy, setBusy] = useState(false);
+  async function choose(minutes: number) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await snooze(minutes);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <div className="modal">
       <div className="sheet compact">
@@ -484,11 +523,21 @@ function SnoozePrompt({
         <span className="eyebrow">SNOOZE</span>
         <h2>Remind me about {item.client_label}</h2>
         <div className="choiceGrid">
-          <button onClick={() => snooze(30)}>In 30 minutes</button>
-          <button onClick={() => snooze(60)}>In 1 hour</button>
-          <button onClick={() => snooze(1440)}>Tomorrow</button>
-          <button onClick={() => snooze(4320)}>In 3 days</button>
-          <button onClick={() => snooze(10080)}>In 1 week</button>
+          <button disabled={busy} onClick={() => choose(30)}>
+            In 30 minutes
+          </button>
+          <button disabled={busy} onClick={() => choose(60)}>
+            In 1 hour
+          </button>
+          <button disabled={busy} onClick={() => choose(1440)}>
+            Tomorrow
+          </button>
+          <button disabled={busy} onClick={() => choose(4320)}>
+            In 3 days
+          </button>
+          <button disabled={busy} onClick={() => choose(10080)}>
+            In 1 week
+          </button>
         </div>
       </div>
     </div>
