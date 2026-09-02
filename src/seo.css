@@ -1,0 +1,10 @@
+.authBenefits {
+  margin: 20px 0;
+  padding-left: 20px;
+  color: #c3cfdd;
+  line-height: 1.7;
+}
+
+.authBenefits li::marker {
+  color: #f2a23a;
+}
