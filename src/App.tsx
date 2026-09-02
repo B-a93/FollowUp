@@ -98,6 +98,11 @@ function Auth({ onAuth }: { onAuth: (t: string) => void }) {
             ? "Sign in to your follow-up workspace."
             : "Create your private pilot workspace."}
         </p>
+        <ul className="authBenefits" aria-label="FollowUp features">
+          <li>Schedule client follow-up reminders</li>
+          <li>Track every conversation and next step</li>
+          <li>Snooze, complete, and review reminder history</li>
+        </ul>
         {mode === "register" && (
           <label>
             Name
