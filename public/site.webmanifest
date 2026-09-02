@@ -1,0 +1,17 @@
+{
+  "name": "FollowUp Client Reminder Manager",
+  "short_name": "FollowUp",
+  "description": "Schedule client follow-ups and keep every next step organized.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08111f",
+  "theme_color": "#0b1728",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
