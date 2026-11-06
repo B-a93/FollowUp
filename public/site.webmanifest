@@ -1,6 +1,6 @@
 {
-  "name": "FollowUp Client Reminder Manager",
-  "short_name": "FollowUp",
+  "name": "LeadFlow Lead and Follow-Up Manager",
+  "short_name": "LeadFlow",
   "description": "Schedule client follow-ups and keep every next step organized.",
   "start_url": "/",
   "display": "standalone",
