@@ -5,9 +5,13 @@ import {
   Clock,
   Edit3,
   History,
+  KanbanSquare,
+  ListTodo,
   LogOut,
+  MessageSquare,
   Plus,
   RotateCcw,
+  UserPlus,
 } from "lucide-react";
 type Priority = "low" | "normal" | "high" | "urgent";
 type Status = "upcoming" | "completed";
@@ -22,6 +26,21 @@ type F = {
   completed_at?: string;
 };
 type Activity = { event_type: string; detail: string; created_at: string };
+type LeadStatus = "new" | "contacted" | "interested" | "won" | "lost";
+type Lead = {
+  id: number;
+  company_name: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  source: string;
+  status: LeadStatus;
+  estimated_value?: string | number;
+  currency: string;
+  notes?: string;
+  next_follow_up?: string;
+  updated_at: string;
+};
 const API = import.meta.env.VITE_API_URL || "";
 const auth = () => localStorage.getItem("followup_token") || "";
 async function call(path: string, init: RequestInit = {}) {
@@ -91,17 +110,17 @@ function Auth({ onAuth }: { onAuth: (t: string) => void }) {
   return (
     <main className="auth">
       <div className="authCard">
-        <span className="eyebrow">FOLLOWUP</span>
-        <h1>Never forget the next client conversation.</h1>
+        <span className="eyebrow">LEADFLOW</span>
+        <h1>Move every lead towards a clear next step.</h1>
         <p className="muted">
           {mode === "login"
             ? "Sign in to your follow-up workspace."
             : "Create your private pilot workspace."}
         </p>
-        <ul className="authBenefits" aria-label="FollowUp features">
-          <li>Schedule client follow-up reminders</li>
-          <li>Track every conversation and next step</li>
-          <li>Snooze, complete, and review reminder history</li>
+        <ul className="authBenefits" aria-label="LeadFlow features">
+          <li>Manage leads from new enquiry to won or lost</li>
+          <li>Record calls, email, WhatsApp and meeting activity</li>
+          <li>Schedule reminders and never miss the next step</li>
         </ul>
         {mode === "register" && (
           <label>
@@ -153,6 +172,7 @@ function Auth({ onAuth }: { onAuth: (t: string) => void }) {
 }
 function Dashboard({ logout }: { logout: () => void }) {
   const [items, setItems] = useState<F[]>([]),
+    [view, setView] = useState<"leads" | "followups">("leads"),
     [loading, setLoading] = useState(true),
     [err, setErr] = useState(""),
     [open, setOpen] = useState(false),
@@ -240,11 +260,9 @@ function Dashboard({ logout }: { logout: () => void }) {
     <main>
       <header>
         <div>
-          <span className="eyebrow">FOLLOWUP</span>
-          <h1>Never miss the next conversation.</h1>
-          <p>
-            {groups.today.length} today · {groups.overdue.length} overdue
-          </p>
+          <span className="eyebrow">LEADFLOW</span>
+          <h1>{view === "leads" ? "Turn every enquiry into a clear next step." : "Never miss the next conversation."}</h1>
+          {view === "followups" && <p>{groups.today.length} today · {groups.overdue.length} overdue</p>}
         </div>
         <div className="headerActions">
           <button className="ghost" onClick={() => setSettings(true)}>
@@ -253,7 +271,7 @@ function Dashboard({ logout }: { logout: () => void }) {
           <button className="ghost" onClick={logout}>
             <LogOut /> Sign out
           </button>
-          <button
+          {view === "followups" && <button
             className="primary"
             onClick={() => {
               setEditing(null);
@@ -261,13 +279,17 @@ function Dashboard({ logout }: { logout: () => void }) {
             }}
           >
             <Plus /> Add follow-up
-          </button>
+          </button>}
         </div>
       </header>
       <aside>
         Privacy: keep client notes generic. Do not enter confidential banking or
         account information.
       </aside>
+      <nav className="workspaceTabs" aria-label="Workspace">
+        <button className={view === "leads" ? "active" : ""} onClick={() => setView("leads")}><KanbanSquare /> Leads</button>
+        <button className={view === "followups" ? "active" : ""} onClick={() => setView("followups")}><ListTodo /> Follow-ups</button>
+      </nav>
       {snoozeNotice && (
         <div className="success snoozeNotice">
           <span>
@@ -277,7 +299,7 @@ function Dashboard({ logout }: { logout: () => void }) {
         </div>
       )}
       {err && <p className="error">{err}</p>}
-      {loading ? (
+      {view === "leads" ? <LeadBoard /> : loading ? (
         <div className="empty">Loading follow-ups…</div>
       ) : (
         <>
@@ -364,6 +386,105 @@ function Dashboard({ logout }: { logout: () => void }) {
       {settings && <ReminderSettings close={() => setSettings(false)} />}
     </main>
   );
+}
+const leadStages: { id: LeadStatus; label: string }[] = [
+  { id: "new", label: "New" },
+  { id: "contacted", label: "Contacted" },
+  { id: "interested", label: "Interested" },
+  { id: "won", label: "Won" },
+  { id: "lost", label: "Lost" },
+];
+function LeadBoard() {
+  const [leads, setLeads] = useState<Lead[]>([]),
+    [loading, setLoading] = useState(true),
+    [err, setErr] = useState(""),
+    [form, setForm] = useState(false),
+    [editing, setEditing] = useState<Lead | null>(null),
+    [activityFor, setActivityFor] = useState<Lead | null>(null),
+    [followupFor, setFollowupFor] = useState<Lead | null>(null);
+  async function load() {
+    try {
+      const j = await call("/api/leads");
+      setLeads(j.data || []);
+      setErr("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Failed to load leads");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { void load(); }, []);
+  async function changeStatus(lead: Lead, status: LeadStatus) {
+    try {
+      await call(`/api/leads/${lead.id}/status`, { method: "POST", body: JSON.stringify({ status }) });
+      await load();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Status update failed"); }
+  }
+  const totalValue = leads.filter((lead) => !["won", "lost"].includes(lead.status)).reduce((sum, lead) => sum + Number(lead.estimated_value || 0), 0);
+  return <section className="leadWorkspace">
+    <div className="pipelineSummary">
+      <div><span>Active leads</span><strong>{leads.filter((lead) => !["won", "lost"].includes(lead.status)).length}</strong></div>
+      <div><span>Pipeline value</span><strong>${totalValue.toLocaleString()}</strong></div>
+      <button className="primary" onClick={() => { setEditing(null); setForm(true); }}><UserPlus /> Add lead</button>
+    </div>
+    {err && <p className="error">{err}</p>}
+    {loading ? <div className="empty">Loading leads…</div> : <div className="pipeline">
+      {leadStages.map((stage) => <div className={`pipelineColumn stage-${stage.id}`} key={stage.id}>
+        <div className="pipelineTitle"><h2>{stage.label}</h2><span>{leads.filter((lead) => lead.status === stage.id).length}</span></div>
+        <div className="leadList">
+          {leads.filter((lead) => lead.status === stage.id).map((lead) => <article className="leadCard" key={lead.id}>
+            <div className="leadCardTop"><span className="source">{lead.source.replaceAll("_", " ")}</span><button className="iconButton" aria-label={`Edit ${lead.company_name}`} onClick={() => { setEditing(lead); setForm(true); }}><Edit3 /></button></div>
+            <h3>{lead.company_name}</h3>
+            {lead.contact_name && <p>{lead.contact_name}</p>}
+            {lead.estimated_value && <strong className="leadValue">{lead.currency} {Number(lead.estimated_value).toLocaleString()}</strong>}
+            {lead.next_follow_up && <small><Clock /> {new Date(lead.next_follow_up).toLocaleString()}</small>}
+            <div className="leadActions">
+              <select aria-label={`Status for ${lead.company_name}`} value={lead.status} onChange={(e) => changeStatus(lead, e.target.value as LeadStatus)}>{leadStages.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select>
+              <button onClick={() => setActivityFor(lead)}><MessageSquare /> Activity</button>
+              <button className="scheduleLead" onClick={() => setFollowupFor(lead)}><Clock /> Follow-up</button>
+            </div>
+          </article>)}
+          {!leads.some((lead) => lead.status === stage.id) && <div className="columnEmpty">No leads</div>}
+        </div>
+      </div>)}
+    </div>}
+    {form && <LeadForm initial={editing} close={() => setForm(false)} saved={async () => { setForm(false); await load(); }} />}
+    {activityFor && <LeadActivity lead={activityFor} close={() => setActivityFor(null)} />}
+    {followupFor && <LeadFollowupForm lead={followupFor} close={() => setFollowupFor(null)} saved={async () => { setFollowupFor(null); await load(); }} />}
+  </section>;
+}
+function LeadForm({ initial, close, saved }: { initial: Lead | null; close: () => void; saved: () => void }) {
+  const [company, setCompany] = useState(initial?.company_name || ""),
+    [contact, setContact] = useState(initial?.contact_name || ""),
+    [email, setEmail] = useState(initial?.email || ""),
+    [phone, setPhone] = useState(initial?.phone || ""),
+    [source, setSource] = useState(initial?.source || "manual"),
+    [value, setValue] = useState(String(initial?.estimated_value || "")),
+    [currency, setCurrency] = useState(initial?.currency || "USD"),
+    [notes, setNotes] = useState(initial?.notes || ""),
+    [err, setErr] = useState("");
+  async function submit() {
+    try {
+      await call(initial ? `/api/leads/${initial.id}` : "/api/leads", { method: initial ? "PATCH" : "POST", body: JSON.stringify({ companyName: company, contactName: contact, email, phone, source, estimatedValue: value, currency, notes }) });
+      await saved();
+    } catch (e) { setErr(e instanceof Error ? e.message : "Unable to save lead"); }
+  }
+  return <div className="modal"><div className="sheet"><button className="close" onClick={close}>×</button><span className="eyebrow">{initial ? "EDIT LEAD" : "NEW LEAD"}</span><h2>{initial ? "Update opportunity" : "Add a potential customer"}</h2>
+    <div className="formGrid"><label>Company or client *<input value={company} onChange={(e) => setCompany(e.target.value)} /></label><label>Contact name<input value={contact} onChange={(e) => setContact(e.target.value)} /></label><label>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label><label>Phone / WhatsApp<input value={phone} onChange={(e) => setPhone(e.target.value)} /></label><label>Lead source<select value={source} onChange={(e) => setSource(e.target.value)}><option value="manual">Manual</option><option value="quote_builder">Quote Builder</option><option value="website">Website</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="referral">Referral</option><option value="social">Social media</option><option value="other">Other</option></select></label><label>Estimated value<div className="valueFields"><select value={currency} onChange={(e) => setCurrency(e.target.value)}><option>USD</option><option>AED</option><option>GMD</option><option>GBP</option><option>EUR</option></select><input type="number" min="0" value={value} onChange={(e) => setValue(e.target.value)} /></div></label></div>
+    <label>Notes<textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Keep notes useful and non-confidential." /></label>{err && <p className="error">{err}</p>}<button className="primary wide" onClick={submit}>{initial ? "Save lead" : "Add lead"}</button>
+  </div></div>;
+}
+function LeadActivity({ lead, close }: { lead: Lead; close: () => void }) {
+  const [rows, setRows] = useState<{ activity_type: string; detail: string; created_at: string }[]>([]), [type, setType] = useState("note"), [detail, setDetail] = useState(""), [err, setErr] = useState("");
+  async function load() { try { const j = await call(`/api/leads/${lead.id}/activity`); setRows(j.data || []); } catch (e) { setErr(e instanceof Error ? e.message : "Failed to load activity"); } }
+  useEffect(() => { void load(); }, [lead.id]);
+  async function add() { try { await call(`/api/leads/${lead.id}/activity`, { method: "POST", body: JSON.stringify({ type, detail }) }); setDetail(""); await load(); } catch (e) { setErr(e instanceof Error ? e.message : "Unable to add activity"); } }
+  return <div className="modal"><div className="sheet"><button className="close" onClick={close}>×</button><span className="eyebrow">LEAD ACTIVITY</span><h2>{lead.company_name}</h2><div className="activityComposer"><select value={type} onChange={(e) => setType(e.target.value)}><option value="note">Note</option><option value="call">Call</option><option value="email">Email</option><option value="whatsapp">WhatsApp</option><option value="meeting">Meeting</option></select><textarea value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="What happened and what is the next step?"/><button className="primary" disabled={!detail.trim()} onClick={add}>Add activity</button></div>{err && <p className="error">{err}</p>}<div className="timeline">{rows.map((row, index) => <div className="event" key={index}><b>{row.activity_type.replaceAll("_", " ")}</b><small>{new Date(row.created_at).toLocaleString()}</small>{row.detail && <p>{row.detail}</p>}</div>)}{!rows.length && <div className="empty">No activity recorded yet.</div>}</div></div></div>;
+}
+function LeadFollowupForm({ lead, close, saved }: { lead: Lead; close: () => void; saved: () => void }) {
+  const [task, setTask] = useState("Follow up with lead"), [due, setDue] = useState(toLocal(new Date(Date.now() + 86400000).toISOString())), [priority, setPriority] = useState<Priority>("normal"), [err, setErr] = useState("");
+  async function submit() { try { await call("/api/followups", { method: "POST", body: JSON.stringify({ leadId: lead.id, clientLabel: lead.company_name, task, priority, dueAt: new Date(due).toISOString() }) }); await saved(); } catch (e) { setErr(e instanceof Error ? e.message : "Unable to schedule follow-up"); } }
+  return <div className="modal"><div className="sheet compact"><button className="close" onClick={close}>×</button><span className="eyebrow">SCHEDULE FOLLOW-UP</span><h2>{lead.company_name}</h2><label>Next action<textarea value={task} onChange={(e) => setTask(e.target.value)} /></label><label>Priority<select value={priority} onChange={(e) => setPriority(e.target.value as Priority)}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></label><label>Due date &amp; time<input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} /></label>{err && <p className="error">{err}</p>}<button className="primary wide" onClick={submit}>Schedule reminder</button></div></div>;
 }
 function FollowupForm({
   initial,
