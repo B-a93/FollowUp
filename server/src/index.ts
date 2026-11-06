@@ -18,6 +18,6 @@ if(process.env.NODE_ENV==='production'){
   app.get(/^(?!\/api(?:\/|$)).*/,(_req,res)=>res.sendFile(path.join(clientDist,'index.html')));
 }
 async function runReminderWorker(){try{await processReminders(db,sendMail)}catch(error){console.error('[reminders] worker failed',error)}}
-async function applyMigrations(){const runtimeDir=path.dirname(fileURLToPath(import.meta.url)),dir=path.join(runtimeDir,'sql'),files=(await fs.readdir(dir)).filter(file=>file.endsWith('.sql')).sort();for(const file of files){await db.query(await fs.readFile(path.join(dir,file),'utf8'));console.log('[database] applied',file)}}
-async function start(){await applyMigrations();app.listen(Number(process.env.PORT)||3001,()=>console.log('FollowUp API ready'));setInterval(()=>{void runReminderWorker()},60_000);setTimeout(()=>{void runReminderWorker()},5_000)}
+async function applyMigrations(){const client=await db.connect();try{await client.query('select pg_advisory_lock($1)',[9042026]);const runtimeDir=path.dirname(fileURLToPath(import.meta.url)),dir=path.join(runtimeDir,'sql'),files=(await fs.readdir(dir)).filter(file=>file.endsWith('.sql')).sort();for(const file of files){await client.query(await fs.readFile(path.join(dir,file),'utf8'));console.log('[database] applied',file)}}finally{try{await client.query('select pg_advisory_unlock($1)',[9042026])}finally{client.release()}}}
+async function start(){await applyMigrations();app.listen(Number(process.env.PORT)||3001,()=>console.log('LeadFlow API ready'));setInterval(()=>{void runReminderWorker()},60_000);setTimeout(()=>{void runReminderWorker()},5_000)}
 start().catch(error=>{console.error('[startup] failed',error);process.exit(1)});
